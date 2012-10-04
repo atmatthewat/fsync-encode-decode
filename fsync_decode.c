@@ -166,14 +166,20 @@ static void _procbits(fsync_decoder_t *decoder, int x)
 		decoder->shstate[x] = 1;
 		decoder->shcount[x] = 32;
 
+#if 0
 		// and abort rest
+
+		// we no longer abort the rest, as we give each decoder a shot
+		// at each component of a multi-part message
+
 		for(i=0; i<FSYNC_ND; i++)
 		{
 			if(i != x)
 			{
-				//test decoder->shstate[i] = 0;
+				decoder->shstate[i] = 0;
 			}
 		}
+#endif
 	}
 	else
 	{
