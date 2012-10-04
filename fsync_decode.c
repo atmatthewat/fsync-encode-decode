@@ -136,8 +136,6 @@ static void _dispatch(fsync_decoder_t *decoder, int x)
 	{
 		paylen = 0;
 	}
-	//printf("aflag = %d\n",aflag);
-	//printf("fleetflag = %d\n",fleetflag);
 
 	if(decoder->callback)
 		(decoder->callback)((int)m1, (int)m0, (int)from_fleet, (int)from_unit, (int)to_fleet, (int)to_unit, (int)aflag, payload, paylen, (unsigned char *)msg, (int)msglen);
@@ -155,9 +153,6 @@ static void _procbits(fsync_decoder_t *decoder, int x)
 	if(crc == (decoder->word2[x] & 0x0000ffff))
 	{
 		int i;
-
-		//printf("\n\nWIN!\ncrc computed %4x  actual %4x\n",crc,decoder->synclow[x] & 0x0000ffff);
-		//printf("   for message %08x%04x\n",decoder->word1[x],decoder->word2[x]>>16);
 
 		decoder->message[x][decoder->msglen[x]++] = (decoder->word1[x] >> 24) & 0xff;
 		decoder->message[x][decoder->msglen[x]++] = (decoder->word1[x] >> 16) & 0xff;
