@@ -59,6 +59,7 @@ fsync_decoder_t * fsync_decoder_new(int sampleRate)
 		decoder->shcount[i] = 0;
 	}
 
+	decoder->callback = (fsync_callback_t)0L;
 	return decoder;
 }
 
