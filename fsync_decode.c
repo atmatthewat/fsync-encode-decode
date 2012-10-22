@@ -59,7 +59,7 @@ fsync_decoder_t * fsync_decoder_new(int sampleRate)
 		decoder->shcount[i] = 0;
 	}
 
-	decoder->callback = (fsync_callback_t)0L;
+	decoder->callback = (fsync_decoder_callback_t)0L;
 	return decoder;
 }
 
@@ -153,8 +153,6 @@ static void _procbits(fsync_decoder_t *decoder, int x)
 
 	if(crc == (decoder->word2[x] & 0x0000ffff))
 	{
-		int i;
-
 		decoder->message[x][decoder->msglen[x]++] = (decoder->word1[x] >> 24) & 0xff;
 		decoder->message[x][decoder->msglen[x]++] = (decoder->word1[x] >> 16) & 0xff;
 		decoder->message[x][decoder->msglen[x]++] = (decoder->word1[x] >> 8) & 0xff;
