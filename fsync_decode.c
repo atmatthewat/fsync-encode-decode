@@ -376,10 +376,10 @@ int fsync_decoder_process_samples(fsync_decoder_t *decoder,
 
 int fsync_decoder_end_samples(fsync_decoder_t *decoder)
 {
+	int i, j;
+
 	if(!decoder)
 		return -1;
-
-	int i, j;
 
 	for(i = 0; i < 70; i++)
 	{
