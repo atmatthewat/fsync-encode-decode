@@ -49,7 +49,7 @@
 #define ZEROCROSSING /* turn off for better 4-point method */
 
 
-typedef void (*fsync_decoder_callback_t)(int cmd, int subcmd, int from_fleet, int from_unit, int to_fleet, int to_unit, int allflag, unsigned char *payload, int payload_len, unsigned char *raw_msg, int raw_msg_len);
+typedef void (*fsync_decoder_callback_t)(int cmd, int subcmd, int from_fleet, int from_unit, int to_fleet, int to_unit, int allflag, unsigned char *payload, int payload_len, unsigned char *raw_msg, int raw_msg_len, void *context);
 
 
 typedef struct {
@@ -70,6 +70,7 @@ typedef struct {
 	fsync_int_t msglen[FSYNC_ND];
 	fsync_int_t actives;
 	fsync_decoder_callback_t callback;
+	void *callback_context;
 } fsync_decoder_t;
 	
 
@@ -119,9 +120,11 @@ int fsync_decoder_end_samples(fsync_decoder_t *decoder);
  will no longer be functional, instead the callback function is called immediately when
  a successful decode happens (from within the context of fsync_decoder_process_samples)
 
+ last parameter of callback will be the (void *)context set here
+
  returns: -1 if error, 0 otherwise
  */
 
-int fsync_decoder_set_callback(fsync_decoder_t *decoder, fsync_decoder_callback_t callbackFunction);
+int fsync_decoder_set_callback(fsync_decoder_t *decoder, fsync_decoder_callback_t callback_function, void *context);
 
 #endif

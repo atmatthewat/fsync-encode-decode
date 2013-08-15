@@ -139,7 +139,7 @@ static void _dispatch(fsync_decoder_t *decoder, int x)
 	}
 
 	if(decoder->callback)
-		(decoder->callback)((int)m1, (int)m0, (int)from_fleet, (int)from_unit, (int)to_fleet, (int)to_unit, (int)aflag, payload, paylen, (unsigned char *)msg, (int)msglen);
+		(decoder->callback)((int)m1, (int)m0, (int)from_fleet, (int)from_unit, (int)to_fleet, (int)to_unit, (int)aflag, payload, paylen, (unsigned char *)msg, (int)msglen, decoder->callback_context);
 
 }
 	
@@ -392,12 +392,13 @@ int fsync_decoder_end_samples(fsync_decoder_t *decoder)
 	return 0;
 }
 
-int fsync_decoder_set_callback(fsync_decoder_t *decoder, fsync_decoder_callback_t callbackFunction)
+int fsync_decoder_set_callback(fsync_decoder_t *decoder, fsync_decoder_callback_t callback_function, void *context)
 {
 	if(!decoder)
 		return -1;
 
-	decoder->callback = callbackFunction;
+	decoder->callback = callback_function;
+	decoder->callback_context = context;
 
 	return 0;
 }
