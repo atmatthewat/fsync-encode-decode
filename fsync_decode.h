@@ -64,6 +64,9 @@ typedef struct {
 	fsync_u32_t synchigh[FSYNC_ND];
 	fsync_int_t shstate[FSYNC_ND];
 	fsync_int_t shcount[FSYNC_ND];
+	fsync_int_t fs2state[FSYNC_ND];
+	fsync_int_t fs2w1[FSYNC_ND];
+	fsync_int_t fs2w2[FSYNC_ND];
 	fsync_u32_t word1[FSYNC_ND];
 	fsync_u32_t word2[FSYNC_ND];
 	fsync_u8_t message[FSYNC_ND][1536];

@@ -57,6 +57,7 @@ fsync_decoder_t * fsync_decoder_new(int sampleRate)
 		decoder->xorb[i] = 0;
 		decoder->shstate[i] = 0;
 		decoder->shcount[i] = 0;
+		decoder->fs2state[i] = 0;
 	}
 
 	decoder->callback = (fsync_decoder_callback_t)0L;
@@ -148,10 +149,9 @@ static void _procbits(fsync_decoder_t *decoder, int x)
 {
 	int crc;
 
-
 	crc = _fsync_crc(decoder->word1[x], decoder->word2[x]);
 
-	if(crc == (decoder->word2[x] & 0x0000ffff))
+	if(crc == (decoder->word2[x] & 0x0000ffff))	// valid fs crc?
 	{
 		decoder->message[x][decoder->msglen[x]++] = (decoder->word1[x] >> 24) & 0xff;
 		decoder->message[x][decoder->msglen[x]++] = (decoder->word1[x] >> 16) & 0xff;
@@ -176,26 +176,102 @@ static void _procbits(fsync_decoder_t *decoder, int x)
 			if(i != x)
 			{
 				decoder->shstate[i] = 0;
+				decoder->fs2state[i] = 0;
 			}
 		}
 #endif
 	}
 	else
 	{
-		decoder->actives--;
-		if(decoder->msglen[x] > 0)
+		// fs2?
+		// (swap is deliberate)
+		int ec1 = _fsync2_ecc_repair((decoder->word1[x]) & 0x0000ffff);
+		int ec2 = _fsync2_ecc_repair((decoder->word1[x] >> 16) & 0x0000ffff);
+		int ec3 = _fsync2_ecc_repair((decoder->word2[x]) & 0x0000ffff);
+		int ec4 = _fsync2_ecc_repair((decoder->word2[x] >> 16) & 0x0000ffff);
+
+		if(ec1 != -1 && ec2 != -1 && ec3 != -1 && ec4 != -4)
 		{
-			if(decoder->actives)
+			switch(decoder->fs2state[x])
 			{
-				// others are working, might decode a longer successful run
-				// XXX this approach is a little sensitive to one of them re-syncing on something
-			}
-			else
-			{
-				_dispatch(decoder, x);
+			case 0:
+				decoder->fs2w1[x] = (((ec1 >> 8) & 0xf) << 28) + (((ec2 >> 8) & 0xf) << 24) + (((ec3 >> 8) & 0xf) << 20) + (((ec4 >> 8) & 0xf) << 16);
+				decoder->fs2state[x] = 1;
+				decoder->shstate[x] = 1;
+				decoder->shcount[x] = 32;
+				break;
+			case 1:
+				decoder->fs2w1[x] |= (((ec1 >> 8) & 0xf) << 12) + (((ec2 >> 8) & 0xf) << 8) + (((ec3 >> 8) & 0xf) << 4) + (((ec4 >> 8) & 0xf));
+				decoder->fs2state[x] = 2;
+				decoder->shstate[x] = 1;
+				decoder->shcount[x] = 32;
+				break;
+			case 2:
+				decoder->fs2w2[x] = (((ec1 >> 8) & 0xf) << 28) + (((ec2 >> 8) & 0xf) << 24) + (((ec3 >> 8) & 0xf) << 20) + (((ec4 >> 8) & 0xf) << 16);
+				decoder->fs2state[x] = 3;
+				decoder->shstate[x] = 1;
+				decoder->shcount[x] = 32;
+				break;
+			case 3:
+				decoder->fs2w2[x] |= (((ec1 >> 8) & 0xf) << 12) + (((ec2 >> 8) & 0xf) << 8) + (((ec3 >> 8) & 0xf) << 4) + (((ec4 >> 8) & 0xf));
+
+				crc = _fsync_crc(decoder->fs2w1[x], decoder->fs2w2[x]);
+
+				if(crc == (decoder->fs2w2[x] & 0x0000ffff))	// valid fs crc?
+				{
+					decoder->message[x][decoder->msglen[x]++] = (decoder->fs2w1[x] >> 24) & 0xff;
+					decoder->message[x][decoder->msglen[x]++] = (decoder->fs2w1[x] >> 16) & 0xff;
+					decoder->message[x][decoder->msglen[x]++] = (decoder->fs2w1[x] >> 8) & 0xff;
+					decoder->message[x][decoder->msglen[x]++] = (decoder->fs2w1[x] >> 0) & 0xff;
+					decoder->message[x][decoder->msglen[x]++] = (decoder->fs2w2[x] >> 24) & 0xff;
+					decoder->message[x][decoder->msglen[x]++] = (decoder->fs2w2[x] >> 16) & 0xff;
+
+					decoder->fs2state[x] = 0;
+					decoder->shstate[x] = 1;
+					decoder->shcount[x] = 32;
+				}
+				else
+				{
+					// refactor (below)
+					decoder->actives--;
+					if(decoder->msglen[x] > 0)
+					{
+						if(decoder->actives)
+						{
+							// see below
+						}
+						else
+						{
+							_dispatch(decoder, x);
+						}
+					}
+					decoder->shstate[x] = 0;
+					decoder->fs2state[x] = 0;
+				}
+				break;
+			default:
+				decoder->fs2state[x] = 0;
+				break;
 			}
 		}
-		decoder->shstate[x] = 0;
+		else
+		{
+			decoder->actives--;
+			if(decoder->msglen[x] > 0)
+			{
+				if(decoder->actives)
+				{
+					// others are working, might decode a longer successful run
+					// XXX this approach is a little sensitive to one of them re-syncing on something
+				}
+				else
+				{
+					_dispatch(decoder, x);
+				}
+			}
+			decoder->shstate[x] = 0;
+			decoder->fs2state[x] = 0;
+		}
 	}
 }
 
@@ -234,6 +310,7 @@ static void _shiftin(fsync_decoder_t *decoder, int x)
 			decoder->shstate[x] = 2;
 			decoder->shcount[x] = 32;
 			decoder->msglen[x] = 0;
+			decoder->fs2state[x] = 0;
 		}
 		return;
 	case 1:
@@ -255,6 +332,7 @@ static void _shiftin(fsync_decoder_t *decoder, int x)
 
 	default:
 		decoder->shstate[x] = 0; // should never happen
+		decoder->fs2state[x] = 0;
 		return;
 	}
 }
