@@ -140,7 +140,7 @@ static void _dispatch(fsync_decoder_t *decoder, int x)
 	}
 
 	if(decoder->callback)
-		(decoder->callback)((int)m1, (int)m0, (int)from_fleet, (int)from_unit, (int)to_fleet, (int)to_unit, (int)aflag, payload, paylen, (unsigned char *)msg, (int)msglen, decoder->callback_context);
+		(decoder->callback)((int)m1, (int)m0, (int)from_fleet, (int)from_unit, (int)to_fleet, (int)to_unit, (int)aflag, payload, paylen, (unsigned char *)msg, (int)msglen, decoder->callback_context, decoder->is_fs2[x]);
 
 }
 	
@@ -160,7 +160,7 @@ static void _procbits(fsync_decoder_t *decoder, int x)
 		decoder->message[x][decoder->msglen[x]++] = (decoder->word2[x] >> 24) & 0xff;
 		decoder->message[x][decoder->msglen[x]++] = (decoder->word2[x] >> 16) & 0xff;
 		// followed by 15 bits of crc and 1 parity bit (already checked)
-
+		decoder->is_fs2[x] = 0;
 		// go get next word, if there is one
 		decoder->shstate[x] = 1;
 		decoder->shcount[x] = 32;
@@ -225,6 +225,8 @@ static void _procbits(fsync_decoder_t *decoder, int x)
 					decoder->message[x][decoder->msglen[x]++] = (decoder->fs2w1[x] >> 0) & 0xff;
 					decoder->message[x][decoder->msglen[x]++] = (decoder->fs2w2[x] >> 24) & 0xff;
 					decoder->message[x][decoder->msglen[x]++] = (decoder->fs2w2[x] >> 16) & 0xff;
+
+					decoder->is_fs2[x] = 1;
 
 					decoder->fs2state[x] = 0;
 					decoder->shstate[x] = 1;
