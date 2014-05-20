@@ -31,7 +31,7 @@
  *  or see http://www.gnu.org/copyleft/gpl.html
  *
 -*/
-
+#include <windows.h>
 #include <stdlib.h>
 #include "fsync_decode.h"
 #include "fsync_common.c"
@@ -140,7 +140,7 @@ static void _dispatch(fsync_decoder_t *decoder, int x)
 	}
 
 	if(decoder->callback)
-		(decoder->callback)((int)m1, (int)m0, (int)from_fleet, (int)from_unit, (int)to_fleet, (int)to_unit, (int)aflag, payload, paylen, (unsigned char *)msg, (int)msglen, decoder->callback_context, decoder->is_fs2[x]);
+		(decoder->callback)((int)m1, (int)m0, (int)from_fleet, (int)from_unit, (int)to_fleet, (int)to_unit, (int)aflag, payload, paylen, (unsigned char *)msg, (int)msglen, decoder->callback_context, decoder->is_fs2[x], x < FSYNC_ND_12 ? 0 : 1);
 
 }
 	
@@ -341,19 +341,36 @@ static void _shiftin(fsync_decoder_t *decoder, int x)
 
 static void _zcproc(fsync_decoder_t *decoder, int x)
 {
-	switch(decoder->zc[x])
+	// XXX optimize the 2400 case
+	if(x >= FSYNC_ND_12)
 	{
-	case 2:
-	case 4:
-		decoder->xorb[x] = 1;
-		break;
-	case 3:
-		decoder->xorb[x] = 0;
-		break;
-	default:
-		return;
+		switch(decoder->zc[x])
+		{
+		case 1:
+			decoder->xorb[x] = 1;
+			break;
+		case 2:
+			decoder->xorb[x] = 0;
+			break;
+		default:
+			return;
+		}
 	}
-
+	else
+	{
+		switch(decoder->zc[x])
+		{
+		case 2:
+		case 4:
+			decoder->xorb[x] = 1;
+			break;
+		case 3:
+			decoder->xorb[x] = 0;
+			break;
+		default:
+			return;
+		}
+	}
 	_shiftin(decoder, x);
 }
 
@@ -434,7 +451,11 @@ int fsync_decoder_process_samples(fsync_decoder_t *decoder,
 
 		for(j=0; j<FSYNC_ND; j++)
 		{
-			decoder->th[j] += decoder->incr;
+			if(j < FSYNC_ND_12)
+				decoder->th[j] += decoder->incr;
+			else
+				decoder->th[j] += 2*(decoder->incr);	// 2400
+
 			if(decoder->th[j] >= TWOPI)
 			{
 				_zcproc(decoder, j);

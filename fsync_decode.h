@@ -41,7 +41,9 @@
 #define TWOPI (2.0 * 3.1415926535)
 #endif
 
-#define FSYNC_ND 5
+#define FSYNC_ND 10
+#define FSYNC_ND_12 5
+
 #define FSYNC_GDTHRESH 4  // "good bits" threshold
 
 #define DIFFERENTIATOR
@@ -49,7 +51,7 @@
 #define ZEROCROSSING /* turn off for better 4-point method */
 
 
-typedef void (*fsync_decoder_callback_t)(int cmd, int subcmd, int from_fleet, int from_unit, int to_fleet, int to_unit, int allflag, unsigned char *payload, int payload_len, unsigned char *raw_msg, int raw_msg_len, void *context, int is_fsync2);
+typedef void (*fsync_decoder_callback_t)(int cmd, int subcmd, int from_fleet, int from_unit, int to_fleet, int to_unit, int allflag, unsigned char *payload, int payload_len, unsigned char *raw_msg, int raw_msg_len, void *context, int is_fsync2, int is_2400);
 
 
 typedef struct {
