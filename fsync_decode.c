@@ -52,7 +52,10 @@ fsync_decoder_t * fsync_decoder_new(int sampleRate)
 
 	for(i=0; i<FSYNC_ND; i++)
 	{
-		decoder->th[i] = 0.0 + ( ((fsync_float_t)i) * (TWOPI/(fsync_float_t)FSYNC_ND));
+		decoder->th[i] = 0.0 + ( ((fsync_float_t)i) * (TWOPI/(fsync_float_t)FSYNC_ND_12));
+		while(decoder->th[i] >= TWOPI)
+			decoder->th[i] -= TWOPI;
+		decoder->thx[i] = decoder->th[i];
 		decoder->zc[i] = 0;
 		decoder->xorb[i] = 0;
 		decoder->shstate[i] = 0;
@@ -465,7 +468,59 @@ int fsync_decoder_process_samples(fsync_decoder_t *decoder,
 		}
 #else	/* ZEROCROSSING */
 
-#error "no alternative to ZEROCROSSING for fsync yet"
+		for(j=0; j<FSYNC_ND; j++)
+		{
+			int th_zero, th_one;
+			if(j < FSYNC_ND_12)
+			{
+				th_zero = (int)((256.0/TWOPI) * decoder->thx[j]);
+				th_one =  (int)((256.0/TWOPI) * decoder->th[j]);
+			}
+			else
+			{
+				th_zero = (int)((256.0/TWOPI) * decoder->th[j]);
+				th_one =  (int)((256.0/TWOPI) * decoder->thx[j]);
+			}
+
+			decoder->accum0[j] += _sintable[th_zero] * value;
+			decoder->accum1[j] += _sintable[th_one] * value;
+
+			decoder->accum0i[j] += _sintable[(th_zero + 64) % 256] * value;
+			decoder->accum1i[j] += _sintable[(th_one + 64) % 256] * value;
+			//
+
+			if(j < FSYNC_ND_12)
+			{
+				decoder->th[j] += decoder->incr;
+				decoder->thx[j] += 1.5 * decoder->incr;
+			}
+			else
+			{
+				decoder->th[j] += 2*(decoder->incr);
+				decoder->thx[j] += decoder->incr;
+			}
+
+			while(decoder->thx[j] >= TWOPI)
+				decoder->thx[j] -= TWOPI;
+
+			if(decoder->th[j] >= TWOPI)
+			{
+				if  (
+					(decoder->accum0[j] * decoder->accum0[j]) + (decoder->accum0i[j] * decoder->accum0i[j]) > (decoder->accum1[j] * decoder->accum1[j]) + (decoder->accum1i[j] * decoder->accum1i[j])
+					)
+					decoder->xorb[j] = 0;
+				else
+					decoder->xorb[j] = 1;
+
+				decoder->accum0[j] = decoder->accum1[j] = 0.0;
+				decoder->accum0i[j] = decoder->accum1i[j] = 0.0;
+
+				_shiftin(decoder, j);
+
+				decoder->th[j] -= TWOPI;
+			}
+
+		}
 
 #endif
 	}
