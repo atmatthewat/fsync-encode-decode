@@ -2,7 +2,7 @@
  * fsync_common.c
  * Author: Matthew Kaufman (matthew@eeph.com)
  *
- * Copyright (c) 2012  Matthew Kaufman  All rights reserved.
+ * Copyright (c) 2012, 2013, 2014  Matthew Kaufman  All rights reserved.
  * 
  *  This file is part of Matthew Kaufman's fsync Encoder/Decoder Library
  *
